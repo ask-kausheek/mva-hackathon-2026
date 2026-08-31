@@ -1,0 +1,46 @@
+proband_id: PROBAND01
+reference: GRCh38
+sample_file: WGS_EX2312012_HGWCNDSX7.vcf.gz
+hpo:
+  - id: HP:0002859
+    label: Rhabdomyosarcoma
+    group: cancer
+    weight: 1.5
+  - id: HP:0000121
+    label: Nephrocalcinosis
+    group: renal
+    weight: 1.25
+  - id: HP:0004322
+    label: Short stature
+    group: growth
+    weight: 1.0
+  - id: HP:0001508
+    label: Failure to thrive
+    group: growth
+    weight: 1.0
+  - id: HP:0003202
+    label: Skeletal muscle atrophy
+    group: muscle
+    weight: 1.0
+  - id: HP:0001622
+    label: Premature birth
+    group: perinatal
+    weight: 0.75
+  - id: HP:0001518
+    label: Small for gestational age
+    group: growth
+    weight: 1.25
+  - id: HP:0200067
+    label: Recurrent spontaneous abortion
+    group: family_history
+    subject: parents
+    weight: 1.25
+
+retrieval:
+  minimum_depth: 8
+  minimum_gq: 20
+  minimum_alt_depth: 3
+  mosaic_minimum_depth: 20
+  mosaic_minimum_alt_depth: 4
+  mosaic_vaf_min: 0.05
+  mosaic_vaf_max: 0.35

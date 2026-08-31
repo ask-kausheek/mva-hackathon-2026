@@ -1,0 +1,5 @@
+# Literature-derived MVA genes used only as a pipeline positive-control.
+# These genes were not inferred from this proband and are not a final filter.
+BUB1B
+CEP57
+TRIP13

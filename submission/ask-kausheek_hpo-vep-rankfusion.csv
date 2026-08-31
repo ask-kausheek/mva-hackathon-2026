@@ -1,0 +1,11 @@
+proband_id,chrom_1,pos_1,ref_1,alt_1,chrom_2,pos_2,ref_2,alt_2,epcr,finding_type,notes
+PROBAND01,chr15,40209701,T,G,chr15,40220612,T,G,1.0,primary,BUB1B compound_heterozygous; two_allele_model; pair_AR_compatible; phase_unknown
+PROBAND01,chr12,7190512,GGCCTCTGAGGCAGTGAGTGTTCTTGAGGTGGAAAGCCCAGGTGCA,G,,,,,0.65,primary,PEX5 homozygous; homozygous_AR_compatible
+PROBAND01,chr22,20996720,C,G,,,,,0.428,secondary,LZTR1 single_heterozygous; pathogenic_but_weak_case_phenotype
+PROBAND01,chr3,48584547,C,T,,,,,0.33,primary,COL7A1 single_heterozygous; VUS_with_moderate_phenotype_rank
+PROBAND01,chr4,67753920,C,T,,,,,0.2,primary,GNRHR single_heterozygous; single_allele_in_AR_gene
+PROBAND01,chr22,17600050,T,G,,,,,0.145,primary,ATP6V1E1 single_heterozygous; single_allele_in_AR_gene
+PROBAND01,chr4,125448901,T,C,,,,,0.118,primary,FAT4 single_heterozygous; single_allele_in_AR_gene
+PROBAND01,chr6,98917691,T,C,,,,,0.096,primary,FBXL4 single_heterozygous; single_allele_in_AR_gene
+PROBAND01,chr14,94379487,CCT,C,,,,,0.076,primary,SERPINA1 single_heterozygous; single_allele_in_AR_gene
+PROBAND01,chr11,17114407,C,A,,,,,0.05,primary,PIK3C2A single_heterozygous; single_allele_in_AR_gene
