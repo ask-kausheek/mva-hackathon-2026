@@ -11,11 +11,9 @@ submission/ask-kausheek_hpo-vep-rankfusion.csv
 submission/ask-kausheek_track1_report.md
 ```
 
-See [the final submission checklist](SUBMISSION_CHECKLIST.md) before uploading.
-
 ## Confirmed inputs
 
-- `WGS_EX2312012_HGWCNDSX7.vcf.gz` and its tabix index
+- `<WGS_PROBAND>.vcf.gz` and its tabix index
 - One sample, GRCh38, 5,012,204 records
 - FASTQ files reserved for targeted validation
 - Eight supplied HPO terms in `configs/proband.yaml`
@@ -26,7 +24,9 @@ See [the final submission checklist](SUBMISSION_CHECKLIST.md) before uploading.
 From WSL, with the VCF in the current directory:
 
 ```bash
-./scripts/01_extract_vcf_features.sh WGS_EX2312012_HGWCNDSX7.vcf.gz data/interim
+export WGS_PROBAND_VCF=/path/to/proband.vcf.gz
+
+./scripts/01_extract_vcf_features.sh "$WGS_PROBAND_VCF" data/interim
 python -m src.features.build_vcf_features \
   --input data/interim/vcf_features.tsv.gz \
   --output-dir data/processed
@@ -40,7 +40,7 @@ VEP should first run on prioritized gene regions rather than all 5 million recor
 
 ```bash
 ./scripts/02_targeted_vep.sh \
-  WGS_EX2312012_HGWCNDSX7.vcf.gz \
+  "$WGS_PROBAND_VCF" \
   /path/to/GRCh38.fa \
   configs/known_mva_seed_genes.txt \
   /path/to/Homo_sapiens.GRCh38.gtf.gz \
@@ -55,7 +55,7 @@ For the Docker installation, use the split workflow:
 
 ```bash
 ./scripts/02_prepare_targeted_candidates.sh \
-  WGS_EX2312012_HGWCNDSX7.vcf.gz GRCh38.fa \
+  "$WGS_PROBAND_VCF" GRCh38.fa \
   configs/known_mva_seed_genes.txt Homo_sapiens.GRCh38.gtf.gz \
   data/annotation/tier1
 
@@ -65,10 +65,9 @@ For the Docker installation, use the split workflow:
 
 ## Design documents
 
-- [Architecture and current status](ARCHITECTURE.md)
+- [System architecture](ARCHITECTURE.md)
 - [Inheritance hypothesis testing](HYPOTHESIS_TESTING.md)
 - [Observed results and ranking evidence](OBSERVATIONS.md)
-- [Submission checklist and repository allowlist](SUBMISSION_CHECKLIST.md)
 - [Chronological session summary](SESSION.md)
 - [Data inventory](docs/data_inventory.md)
 - [Feature inventory](docs/feature_inventory.md)

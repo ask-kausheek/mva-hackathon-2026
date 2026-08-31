@@ -1,6 +1,8 @@
 # Track 1 Methods Report
 
 **Participant:** ask-kausheek  
+**Team:** Soul  
+**Model/approach number:** 1  
 **Challenge:** Rare Disease, Real Kid: MVA Hackathon 2026  
 **Track:** Track 1 — Ranked Variant Prediction  
 **Reference assembly:** GRCh38  
@@ -371,11 +373,35 @@ Public resources:
 - Human Phenotype Ontology `hp.obo`
 - HPO `genes_to_phenotype.txt`
 
+## Submission generation and review
+
+The submission CSV is generated automatically by
+`src/ranking/rank_hypotheses.py`. Downstream review was used to identify
+general ranking errors, including known-cis pairs, short-range pseudo-pairs,
+complex HLA haplotypes, conflicting clinical classifications and incorrect
+treatment of missing population frequency. These corrections were encoded as
+reproducible ranking rules and the pipeline was rerun; final coordinates were
+not manually inserted into the CSV.
+
+The analysis used the organizer-provided controlled-access case data and public
+reference resources. No proprietary annotation database, private training
+dataset or commercial clinical interpretation dataset was used.
+
+The model outputs both single-variant and compound-heterozygous hypotheses.
+Secondary findings are retained only when independently credible, labeled with
+`finding_type=secondary`, and assigned lower confidence than the leading
+primary hypotheses.
+
+Measured runtime included approximately 24 seconds for the one-pass VCF
+projection and approximately 72 minutes for optional Lane-1 R1 alignment.
+Targeted annotation and ranking ran locally using open-source software. No paid
+annotation API or model-training infrastructure was required.
+
 ## AI assistance disclosure
 
-GitHub Copilot CLI powered by GPT-5.6 Sol was used for pipeline design, code
-generation, debugging, documentation and interpretation support. The account
-plan/tier was not identified during the session. Raw VCF and FASTQ files were
-processed locally and were not uploaded through the assistant. AI interaction
-used aggregate statistics, selected candidate-level excerpts and public
-challenge/reference information.
+Copilot CLI powered by GPT-5.6 Sol was used for pipeline design, code
+generation, debugging, documentation and interpretation support. GitHub
+Copilot Enterprise was used under commercial terms with no training on customer
+content. Raw VCF and FASTQ files were processed locally and were not uploaded
+through the assistant. AI interaction used aggregate statistics, selected
+candidate-level findings and public challenge/reference information.

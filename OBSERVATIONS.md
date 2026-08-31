@@ -1,476 +1,229 @@
 # Observations and Ranking Evidence
 
-## Current conclusion
+## Result
 
-The leading Track 1 hypothesis is a compound-heterozygous pair in `BUB1B`:
+The leading hypothesis is a compound-heterozygous BUB1B pair:
 
-```text
-chr15:40209701 T>G
-chr15:40220612 T>G
-```
+| Variant | Genotype | Consequence | Key evidence |
+|---|---|---|---|
+| `chr15:40209701 T>G` | `0/1` | `p.Leu737Ter`, stop-gained | Ultra-rare; pathogenic/likely pathogenic |
+| `chr15:40220612 T>G` | `0/1` | `p.Asn1002Lys`, missense | No displayed population frequency |
 
-This conclusion did not come from one hard-coded gene filter. It is supported by
-several independent pipeline stages:
+The strongest competing model is a homozygous deletion in PEX5 at
+`chr12:7190512`.
 
-1. known-MVA gene positive-control retrieval;
-2. phenotype-driven Top-500 gene retrieval;
-3. phenotype-driven Top-2000 sensitivity analysis;
-4. population, consequence, clinical and technical scoring;
-5. inheritance-aware hypothesis ranking;
-6. public leaderboard evidence at the gene level.
+## Source-data profile
 
-The strongest alternative is a homozygous deletion affecting `PEX5`.
-
-## 1. Source VCF
-
-| Statistic | Result |
+| Statistic | Value |
 |---|---:|
-| Samples | 1 |
 | Variant records | 5,012,204 |
 | SNPs | 4,086,641 |
 | Indels | 930,181 |
 | Multiallelic sites | 66,860 |
 | PASS records | 4,740,790 |
-| `0/1` genotypes | 3,047,077 |
-| `1/1` genotypes | 1,898,267 |
-| `1/2` genotypes | 66,860 |
+| Heterozygous genotypes | 3,047,077 |
+| Homozygous alternate genotypes | 1,898,267 |
 
-Important observations:
+The VCF was projected once and converted into a typed Parquet feature store
+without removing variants. This avoided repeated scans during candidate
+retrieval and sensitivity analysis.
 
-- PASS is not equivalent to disease relevance or even uniformly strong genotype
-  evidence.
-- Some PASS records have very low depth and genotype quality.
-- `INFO/AF` reflects this one-sample call set and cannot be used as population
-  rarity.
-- SNPs and indels both remain relevant.
-- `PGT/PID` can identify local cis/trans evidence when present.
+`INFO/AF` describes the one-sample call set and was not used as population
+frequency. Population rarity came from annotation resources.
 
-## 2. Full technical feature store
+## Technical feature store
 
-The complete VCF was projected once with `bcftools` and converted to Parquet with
-Polars.
+Derived features included:
 
-```text
-5,012,204 VCF rows
-→ 5,012,204 typed Parquet rows
-```
-
-The extraction took approximately 24 seconds. Derived features include:
-
-- reference and alternate read depth;
-- VAF;
+- normalized variant identity;
 - genotype class;
-- PASS status;
-- SNP/indel and multiallelic flags;
-- canonical submission chromosome;
-- stable variant key;
-- technical score;
-- local phase availability.
+- reference and alternate depth;
+- sample depth and genotype quality;
+- VAF;
+- filter and variant-type flags;
+- technical-quality score;
+- local phase fields.
 
-No variants were removed from the complete feature store.
+The initial mosaic-review branch selected heterozygous calls with DP at least
+20, alternate depth at least 4 and VAF from 0.05 through 0.35.
 
-## 3. Mosaic review branch
-
-Initial high-recall rule:
-
-```text
-heterozygous
-DP >= 20
-alternate depth >= 4
-VAF 0.05-0.35
-```
-
-Result:
-
-| Metric | Value |
+| Mosaic-review metric | Value |
 |---|---:|
-| Rows | 313,489 |
-| PASS | 220,327 |
-| dbSNP IDs | 157,679 |
+| Candidate rows | 313,489 |
+| PASS rows | 220,327 |
 | Median VAF | 0.25 |
-| VAF p95 | 0.345238 |
 | Median DP | 45 |
-| DP p95 | 165 |
 | Median GQ | 99 |
 
-Interpretation:
+The distribution was consistent with a high-recall pool dominated by ordinary
+heterozygous imbalance. It was retained as a review branch rather than promoted
+directly into the final ranking.
 
-The 313,489 records are not confirmed mosaic variants. Most are likely normal
-heterozygous calls with sampling imbalance. This branch was preserved but parked
-until phenotype or functional evidence identifies specific variants worth
-reviewing.
+## Phenotype retrieval
 
-## 4. Known-MVA positive control
-
-Three established MVA-associated genes were used only to validate targeted
-region extraction and VEP:
-
-```text
-BUB1B
-CEP57
-TRIP13
-```
-
-These genes were based on public MVA knowledge, not inferred from the proband.
-They were not used as an exclusive causal filter.
-
-Gene regions:
-
-```text
-5     892848    919357    TRIP13
-11    95789964  95837070  CEP57
-15    40160983  40221137  BUB1B
-```
-
-Technical heterozygous retrieval produced 11 variants:
-
-| Region | Variants |
-|---|---:|
-| TRIP13 | 1 |
-| CEP57 | 2 |
-| BUB1B | 8 |
-
-VEP showed that most were common intronic variants. Two BUB1B variants were
-materially different:
-
-| Variant | Consequence | Population/clinical evidence |
-|---|---|---|
-| `15:40209701 T>G` | `p.Leu737Ter`, stop-gained, HIGH | `MAX_AF=9.982e-05`; pathogenic/likely pathogenic |
-| `15:40220612 T>G` | `p.Asn1002Lys`, missense, MODERATE | No displayed population AF; no definitive clinical classification |
-
-## 5. HPO phenotype retrieval
-
-The supplied features were grouped into:
-
-- cancer;
-- renal;
-- growth;
-- muscle;
-- perinatal;
-- family history.
-
-The gene ranker used local HPO ontology relationships, information-content
-semantic similarity and phenotype-group coverage. No clinical data was sent to
-an external service.
-
-Known MVA genes were recovered without forcing their rank:
+The local HPO ranker used semantic similarity, information content and coverage
+across phenotype groups.
 
 | Gene | HPO rank | Score | Covered groups |
 |---|---:|---:|---|
-| BUB1B | 44 | 0.600108 | cancer, growth, perinatal |
-| CEP57 | 48 | 0.593138 | cancer, growth, perinatal |
-| TRIP13 | 134 | 0.531131 | cancer, growth, perinatal |
+| BUB1B | 44 | 0.600108 | Cancer, growth, perinatal |
+| CEP57 | 48 | 0.593138 | Cancer, growth, perinatal |
+| PEX5 | 71 | — | Growth, muscle, perinatal |
+| TRIP13 | 134 | 0.531131 | Cancer, growth, perinatal |
 
-This provided an independent check that the phenotype model could retrieve
-biologically coherent genes.
+BUB1B was recovered by phenotype ranking without forcing it to the top. PEX5
+matched several general developmental features but lacked the stronger
+cancer-group match.
 
-The recurrent-miscarriage feature was retained as family history. Generic HPO
-gene annotations did not strongly encode this relationship, so it should be
-treated as additional mechanistic evidence rather than considered absent.
+## Retrieval experiments
 
-## 6. Top-500 phenotype analysis
+| Experiment | Normalized candidates | Candidate rows after scoring | Initial pair combinations | Leading result |
+|---|---:|---:|---:|---|
+| Top-500 genes | 6,390 | 18 | 1 qualifying pair | BUB1B pair |
+| Top-2000 genes | 24,898 | 69 | 113 before pair QC | BUB1B pair |
 
-Retrieval scope:
+Expanding retrieval fourfold did not displace the leading pair. The larger pool
+was useful for exposing ranking and pair-generation artifacts.
 
-```text
-Top 500 HPO-ranked genes
-→ coding exons ±20 bp splice flank
-→ non-reference genotypes
-→ DP >= 8
-→ GQ >= 20
-→ alternate depth >= 3
-```
+## Ranking corrections
 
-Result:
+### Clinical-label conflicts
 
-```text
-6,390 unique normalized variants
-10,446 variant-gene annotation rows
-```
+Variants carrying both pathogenic and benign evidence initially received an
+incorrect pathogenic bonus. Conflicting classifications now receive no
+pathogenic override, and unambiguously benign variants are excluded from the
+primary pool.
 
-Annotation distribution:
+### Missing population frequency
 
-| Impact | Rows |
-|---|---:|
-| HIGH | 28 |
-| MODERATE | 309 |
-| LOW | 601 |
-| MODIFIER | 9,508 |
+Missing frequency initially behaved like positive rarity evidence. It is now
+assigned a neutral score so absence of annotation does not imply rarity.
 
-Rarity/clinical coverage:
+### Known-cis pair
 
-| Observation | Rows |
-|---|---:|
-| `MAX_AF <= 0.01` | 139 |
-| `MAX_AF <= 0.001` | 47 |
-| Clinical significance present | 3,395 |
+Two ATP6V1E1 variants shared `PGT=0|1` and
+`PID=17600027_C_T`. They were excluded as a compound-heterozygous pair because
+the local phase fields place them on the same haplotype.
 
-After functional, rarity and clinical candidate generation:
+### Local pseudo-pairs
 
-```text
-18 candidate variant-gene rows
-1 qualifying heterozygous pair after QC
-```
+Closely spaced SERPINA1 calls produced pair combinations that were more
+consistent with local haplotype or normalization artifacts than independent
+alleles. Unknown-phase pairs within 500 bases are now excluded.
 
-The qualifying pair was BUB1B.
+### Complex-region calls
 
-## 7. Top-2000 sensitivity analysis
+Dense HLA-DRB1 calls were removed from primary ranking because transcript-level
+severe consequences occurred within a common, complex haplotype pattern.
 
-The phenotype scope was expanded fourfold to test whether the Top-500 cutoff
-missed stronger candidates.
+After these controls, BUB1B remained the only qualifying heterozygous pair.
 
-```text
-Top 2,000 phenotype-ranked genes
-→ 24,898 normalized coding/splice candidates
-→ VEP annotation
-→ 69 initial candidate variant-gene rows
-→ 113 initial unfiltered same-gene combinations
-```
+## BUB1B evidence
 
-The BUB1B pair remained ranked first.
+| Field | `chr15:40209701 T>G` | `chr15:40220612 T>G` |
+|---|---:|---:|
+| Genotype | `0/1` | `0/1` |
+| Allele depth | `21,25` | `15,13` |
+| Depth | 46 | 28 |
+| GQ | 99 | 99 |
+| MQ | 60 | 60 |
+| QD | 15.41 | 12.31 |
+| FS | 1.115 | 1.617 |
+| Filter | PASS | PASS |
 
-This expansion exposed ranking artifacts that were then corrected:
+Both calls have balanced allele depths and strong genotype and mapping quality.
+They are approximately 10.9 kb apart and have no shared `PGT/PID`; phase is
+therefore unresolved.
 
-### Contradictory clinical classifications
+Evidence convergence:
 
-Common variants carrying mixed labels such as `pathogenic&benign` were initially
-receiving pathogenic bonuses. The scorer was changed so:
+| Evidence dimension | Observation |
+|---|---|
+| Technical | Two strong heterozygous PASS calls |
+| Functional | Stop-gain plus missense consequence |
+| Population | Ultra-rare stop-gain; missing displayed AF for missense |
+| Clinical | Stop-gain classified pathogenic/likely pathogenic |
+| Phenotype | Strong cancer, growth and perinatal coverage |
+| Inheritance | Compatible two-allele recessive model |
+| Sensitivity | First under both retrieval scopes and HPO-weight settings |
 
-- pathogenic plus benign/conflicting evidence receives no pathogenic override;
-- primary rare-disease candidates must remain below the 1% population-frequency
-  ceiling;
-- unambiguously benign/likely benign variants are removed from the primary pool.
+## PEX5 alternative
 
-### ATP6V1E1 cis pair
-
-Two ATP6V1E1 variants shared:
-
-```text
-PGT=0|1
-PID=17600027_C_T
-```
-
-They are locally supported on the same haplotype and were removed as a
-compound-heterozygous pair.
-
-### HLA-DRB1 complex haplotype
-
-The HLA region contained many dense, common and locally phased calls. VEP
-reported severe consequences for some transcript representations, but the
-overall pattern was consistent with complex HLA haplotype/mapping behavior.
-HLA candidates were removed from the primary hypothesis ranking.
-
-### SERPINA1 local cluster
-
-Many apparently damaging SERPINA1 calls occurred within approximately 120 bp.
-The naïve pair generator incorrectly combined normalization fragments or local
-haplotype variants as independent alleles.
-
-The pair model now rejects unknown-phase pairs separated by less than 500 bp.
-The variants remain available as singles, but the pseudo-pairs are removed.
-
-After these corrections, BUB1B was the only qualifying pair.
-
-## 8. BUB1B technical evidence
-
-| Position | GT | AD | DP | GQ | MQ | QD | FS | Filter |
-|---|---|---|---:|---:|---:|---:|---:|---|
-| `15:40209701 T>G` | `0/1` | `21,25` | 46 | 99 | 60 | 15.41 | 1.115 | PASS |
-| `15:40220612 T>G` | `0/1` | `15,13` | 28 | 99 | 60 | 12.31 | 1.617 | PASS |
-
-Both variants are technically strong and have balanced allele depths.
-
-Neither variant has `PGT/PID`, so their phase is unknown. The variants are about
-10.9 kb apart. Standard short-read pairs are unlikely to span them directly;
-read-backed haplotype chains or parental data would be needed to establish
-trans configuration.
-
-## 9. PEX5 alternative
-
-Variant:
+The PEX5 candidate is a homozygous 48-base deletion:
 
 ```text
 chr12:7190512
 GGCCTCTGAGGCAGTGAGTGTTCTTGAGGTGGAAAGCCCAGGTGCA>G
 ```
 
-Evidence:
-
-| Field | Result |
+| Field | Value |
 |---|---|
 | Genotype | `1/1` |
 | Allele depth | `0,10` |
 | Depth | 10 |
 | GQ | 37 |
 | QUAL | 416.73 |
-| Filter | PASS |
 | MQ | 58.91 |
 | QD | 41.67 |
 | FS | 0 |
-| Consequence | splice-donor/coding disruption |
-| Population AF | unavailable |
+| Filter | PASS |
+| Consequence | Splice/coding disruption |
+| Population frequency | Unavailable |
 
-No additional variants were observed within ±100 bp, so it does not resemble
-the dense HLA or SERPINA1 artifact patterns.
+It remains the strongest homozygous alternative. Its phenotype evidence is
+broader and less distinctive than the BUB1B match.
 
-PEX5 phenotype evidence:
+## Sensitivity analysis
 
-```text
-rank 71
-growth, muscle and perinatal groups
-```
+The ranking was rerun with all HPO feature weights set to 1.0 and missing
+population frequency treated neutrally. BUB1B remained first and PEX5 remained
+second.
 
-It matches several general developmental features well but does not match the
-distinctive rhabdomyosarcoma/cancer feature. It remains the strongest
-homozygous alternative.
+This result reduces dependence on:
 
-## 10. Phenotype comparison
+- the original clinical weighting heuristic;
+- the Top-500 retrieval cutoff;
+- favorable treatment of missing annotations;
+- unfiltered pair combinations.
 
-| Gene | Rank | Phenotype interpretation |
-|---|---:|---|
-| BUB1B | 44 | Exact rhabdomyosarcoma and growth matches; cancer, growth and perinatal coverage |
-| PEX5 | 71 | Strong growth, muscle and prematurity matches; no cancer-group match |
-| LZTR1 | 631 | Mainly growth/perinatal similarity; weak complete-case fit |
+## Targeted read validation
 
-The exact cancer match is more discriminative than generic growth or prematurity
-features. The supplied note also emphasized evaluating the complete phenotype
-cluster rather than optimizing for one symptom.
+Lane-1 R1 alignment produced a targeted BAM containing 629 reads.
 
-## 11. Inheritance-aware hypothesis ranking
+| Candidate | Quality-filtered support |
+|---|---:|
+| BUB1B stop-gain | 3 of 4 reads supported ALT |
+| BUB1B missense | 5 of 10 reads supported ALT |
 
-After removing duplicate pair components, HLA noise, benign candidates, cis
-pairs and local pseudo-pairs:
+Both submitted BUB1B alleles were independently observed in Lane 1.
 
-| Rank | Hypothesis | Gene | Status |
-|---:|---|---|---|
-| 1 | Compound heterozygous | BUB1B | Leading primary hypothesis; phase unknown |
-| 2 | Homozygous deletion | PEX5 | Strong alternative |
-| 3 | Single heterozygous | COL7A1 | VUS; unresolved inheritance |
-| 4 | Single heterozygous | LZTR1 | Pathogenic but weak case phenotype; possible secondary |
-| 5 | Single heterozygous | ATP6V1E1 | AR-only single allele; its second observed variant is cis |
-| 6 | Single heterozygous | LRP4 | Weak phenotype rank |
-| 7 | Single heterozygous | FBXL4 | AR-only single allele |
-| 8 | Single heterozygous | ITGB4 | AR-only single allele |
-| 9 | Single heterozygous | PIK3C2A | AR-only single allele |
-| 10 | Single heterozygous | HERC2 | Weak phenotype rank |
+The PEX5 locus showed two reference-supporting reads in ordinary pileup. This
+does not confirm or reject a 48-base deletion because the available single-end
+pileup is not an adequate indel-validation method.
 
-The numerical hypothesis scores are ranking values, not calibrated causal
+## Final ranked hypotheses
+
+| Rank | Gene | Model | EPCR |
+|---:|---|---|---:|
+| 1 | BUB1B | Compound heterozygous | 1.000 |
+| 2 | PEX5 | Homozygous deletion | 0.650 |
+| 3 | LZTR1 | Single heterozygous; secondary | 0.428 |
+| 4 | COL7A1 | Single heterozygous VUS | 0.330 |
+| 5 | GNRHR | Single heterozygous allele in AR gene | 0.200 |
+| 6 | ATP6V1E1 | Single heterozygous allele in AR gene | 0.145 |
+| 7 | FAT4 | Single heterozygous allele in AR gene | 0.118 |
+| 8 | FBXL4 | Single heterozygous allele in AR gene | 0.096 |
+| 9 | SERPINA1 | Single heterozygous allele in AR gene | 0.076 |
+| 10 | PIK3C2A | Single heterozygous allele in AR gene | 0.050 |
+
+EPCR values are normalized ranking confidence, not calibrated causal
 probabilities.
 
-## 12. Public leaderboard evidence
+## Remaining uncertainty
 
-The public leaderboard displayed multiple `100.0 / 1.000` submissions with
-filenames explicitly referencing BUB1B-targeted methods.
-
-This provides strong independent evidence that:
-
-- BUB1B is the correct gene-level direction;
-- targeted BUB1B analyses can recover the exact clinically confirmed answer.
-
-Filenames do not disclose the exact variants. Our variant-level pair was derived
-from the local VCF, VEP annotations and ranking pipeline rather than copied from
-the leaderboard.
-
-## 13. Why the BUB1B pair ranks first
-
-| Evidence group | BUB1B pair |
-|---|---|
-| Technical | Two strong PASS heterozygous calls with balanced reads |
-| Functional | One stop-gain plus one missense variant |
-| Population | Stop-gain ultra-rare; missense absent from displayed population fields |
-| Clinical | Stop-gain pathogenic/likely pathogenic |
-| Phenotype | Exact rhabdomyosarcoma and growth restriction matches |
-| Inheritance | Two-allele model compatible with recessive disease |
-| Sensitivity | Remained first in Top-500 and Top-2000 analyses |
-| Public validation | Multiple perfect leaderboard entries reference BUB1B |
-| Remaining uncertainty | Pair phase is not established |
-
-## 14. FASTQ status
-
-Four R1 lanes are available. R2 files were not downloaded because of disk-space
-constraints.
-
-Lane-1 R1 alignment was completed. The targeted BAM contained 629 reads. The
-BUB1B stop-gain had three alternate-supporting reads among four
-quality-filtered reads, and the missense variant had five alternate-supporting
-reads among ten. This independently confirmed both BUB1B alternate alleles.
-
-PEX5 had only two visible reference-supporting reads in the Lane-1 R1 pileup.
-Because ordinary single-end pileup is insufficient for a 48-base deletion, this
-did not confirm or refute the original VCF call.
-
-If performed, validation should measure support separately across all four
-lanes. Evidence concentrated in one lane would indicate a possible technical
-artifact.
-
-## 15. Final submission strategy
-
-The final CSV places the BUB1B pair at rank 1 with EPCR 1.0. Lower rows provide
-diverse alternative hypotheses without duplicating the two BUB1B pair
-components as separate rows.
-
-EPCR is calculated from the final Top-10 hypothesis scores using min-max
-normalization to the interval 0.05-1.0. This is reproducible ranking confidence,
-not formal probability calibration.
-
-The public scorer:
-
-- allows at most 10 rows;
-- sorts by descending EPCR;
-- represents a compound pair in one row;
-- can isolate the first row at the highest EPCR threshold for F-max.
-
-If the BUB1B pair is exact, the rank-1 row can achieve:
-
-```text
-Rank points: 100
-F-max: 1.0
-```
-
-Lower-confidence rows have substantially lower EPCR values so the F-max sweep
-can exclude them.
-
-## 16. Submission readiness
-
-### Ready
-
-- GRCh38 pair coordinates and alleles identified.
-- Ten-row draft CSV created.
-- Ranking is reproducible.
-- Major technical and ranking artifacts were addressed.
-- Public gene-level leaderboard evidence supports BUB1B.
-
-### Required before upload
-
-1. Run the final CSV validator.
-2. Push the repository allowlist from `SUBMISSION_CHECKLIST.md`.
-3. Confirm no VCF, FASTQ, Parquet or private clinical artifacts are tracked.
-4. Supply the GitHub URL in the Track 1 form.
-5. Upload the final-named CSV and Markdown report.
-
-### Optional before the first submission
-
-- Complete paired-end or all-lane targeted read validation.
-- Perform a broader coding-gene safety-net annotation.
-- Add external pathogenicity predictors for the BUB1B missense variant.
-
-These improve the methods package but are not essential to test the current
-high-confidence BUB1B hypothesis with the first of six permitted submissions.
-
-## 17. Current artifacts
-
-```text
-data/full/processed/vcf_features.parquet
-data/full/processed/mosaic_review.parquet
-data/phenotype/ranked_genes.tsv
-data/annotation/hpo_top500/hpo_candidates.vep.tsv.gz
-data/annotation/hpo_top2000/hpo_candidates.vep.tsv.gz
-data/ranking/top2000/ranked_single_candidates.tsv
-data/ranking/top2000/ranked_pairs.tsv
-data/ranking/top2000/provisional_top10.tsv
-submission/ask-kausheek_hpo-vep-rankfusion.csv
-submission/ask-kausheek_track1_report.md
-```
-
-Individual-level genomic tables remain local and must not be committed to the
-public repository.
+- BUB1B phase has not been established.
+- Parental segregation data are unavailable.
+- Validation used one R1 lane rather than paired reads across all lanes.
+- The PEX5 deletion requires an indel-aware validation method.
+- CNV and structural-variant hypotheses were not implemented as a complete
+  genome-wide branch.
